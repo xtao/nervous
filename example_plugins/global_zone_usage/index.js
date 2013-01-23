@@ -1,5 +1,5 @@
 // configuration
-var interval = 15*1000;
+var interval = 5*1000;
 
 var kstat = {
     'link':{
@@ -56,7 +56,7 @@ module.exports = function( axon ) {
             }
             data['nervous_name'] = field[type['name_id']];
             data['nervous_type'] = type_name;
-            emit_kstat(type, data);
+            emit_kstat(type['stat'], data);
         }
     };
 
