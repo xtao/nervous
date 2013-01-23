@@ -1,0 +1,31 @@
+{
+  "name": "nervous_plugin_global_zone_usage",
+  "preferGlobal": false,
+  "version": "0.1.0",
+  "author": {
+    "name": "Xu Tao",
+    "email": "xutao881001@gmail.com"
+  },
+  "description": "a SmartOS global zone usage plugin for Nervous",
+  "contributors": [
+    {
+      "name": "Xu Tao",
+      "email": "xutao881001@gmail.com"
+    }
+  ],
+  "main": "./index.js",
+  "keywords": [
+    "nervous",
+    "monitoring",
+    "plugable",
+    "plugin"
+  ],
+  "dependencies": {},
+  "noAnalyze": true,
+  "devDependencies": {},
+  "bundleDependencies": [],
+  "license": "MIT",
+  "engine": {
+    "node": ">=0.6"
+  }
+}
