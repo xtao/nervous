@@ -1,5 +1,5 @@
 // configuration
-var interval = 15*1000;
+var interval = 5*1000;
 
 var ZONE_ID    =   0;
 var UUID_ID    =   1;
@@ -14,6 +14,7 @@ var kstat = {
     'link':{
         'num': 25,
         'name_id': 2,
+        'name': 'net',
         'stat':[
             'obytes',
             'obytes64',
@@ -24,6 +25,7 @@ var kstat = {
     'disk':{
         'num': 15,
         'name_id': 2,
+        'name': 'disk',
         'stat':[
             'reads',
             'nread',
@@ -33,7 +35,8 @@ var kstat = {
     },
     'cpu':{
         'num': 15,
-        'name_id': 2,
+        'name_id': 0,
+        'name': 'cpu',
         'stat':[
             'usage',
             'value'
@@ -87,18 +90,21 @@ module.exports = function( axon ) {
                 var metric = field[3].split('\t');
                 data[metric[0]] = metric[1];
             }
-            data['nervous_name'] = field[type['name_id']];
-            data['nervous_type'] = type_name;
+            if (length > 1) {
+                data['nervous_name'] = type['name'] + i;
+            } else {
+                data['nervous_name'] = type['name'];
+            }
+            var zone = vm_list[data['zonename']];
+            var alias = zone[ALIAS_ID];
+            alias = alias.replace(/\./, '_');
+            data['nervous_type'] = alias;
             emit_kstat(type['stat'], data);
         }
     };
 
     var emit_data = function(data) {
         axon.emit( 'data',  data['alias'] + '.' + data['name'], data['data'] );
-    };
-
-    var on_cpu_complete = function( err, stdout, stderr ) {
-        on_kstat_complete(err, stdout, stderr, 'cpu');
     };
 
     var emit_link = function(link) {
@@ -112,24 +118,6 @@ module.exports = function( axon ) {
             data['name'] = link['name'] + '.' + link_field_to_post[i];
             data['data'] = link[link_field_to_post[i]];
             emit_data(data);
-        }
-    };
-
-    var on_link_complete = function( err, stdout, stderr ) {
-        var link = [];
-        var lines = stdout.split('\n');
-        for (var i = 0; i < lines.length; i++) {
-            var field = lines[i].split(':');
-            if (field.length < 4) {
-                continue;
-            }
-            var metric = field[3].split('\t');
-            link[metric[0]] = metric[1];
-            if (i % link_field_total_num == link_field_total_num - 1) {
-                link['name'] = field[2];
-                emit_link(link);
-                link = [];
-            }
         }
     };
 
@@ -198,8 +186,15 @@ module.exports = function( axon ) {
             }
             vm_list[field[ZONE_ID]] = field;
             vm_list[field[UUID_ID]] = field;
-            child_process.exec( 'kstat -p caps::cpucaps_zone_' + field[ZONE_ID], on_cpu_complete);
-            child_process.exec( 'kstat -m link -n z' + field[ZONE_ID]  + '_net* -p', on_link_complete);
+            console.log(field);
+            child_process.exec( 'kstat -p caps::cpucaps_zone_' + field[ZONE_ID],
+                function(err, stdout, stderr){
+                    on_kstat_complete(err, stdout, stderr, 'cpu');
+                });
+            child_process.exec( 'kstat -m link -n z' + field[ZONE_ID]  + '_net* -p',
+                function(err, stdout, stderr){
+                    on_kstat_complete(err, stdout, stderr, 'link');
+                });
             child_process.exec( 'kstat -m zone_zfs -i ' + field[ZONE_ID] + ' -p', on_zfs_complete);
         }
         child_process.exec( 'zfs list -p -o name,used', on_disk_complete );
@@ -207,7 +202,7 @@ module.exports = function( axon ) {
 
     //this checks it
     var check_vm_usage = function() {
-        child_process.exec( 'vmadm list -p -o zoneid,uuid,type,ram,state,pid,alias|grep :KVM:', on_exec_complete );
+        child_process.exec( 'vmadm list -p -o zoneid,uuid,type,ram,state,pid,alias|grep :KVM:|grep :running:', on_exec_complete );
     };
 
     setInterval( check_vm_usage, interval );
