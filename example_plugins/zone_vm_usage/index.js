@@ -167,7 +167,7 @@ module.exports = function( axon ) {
             var metric = field[3].split('\t');
             zfs[metric[0]] = metric[1];
             if (i % zone_zfs_field_total_num == zone_zfs_field_total_num - 1) {
-                zfs['name'] = field[2];
+                zfs['name'] = 'zone_zfs';
                 emit_zfs(zfs);
                 zfs = [];
             }
