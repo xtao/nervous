@@ -33,10 +33,10 @@ var kstat = {
             'nwritten'
         ]
     },
-    'cpu':{
+    'cpucaps':{
         'num': 15,
         'name_id': 0,
-        'name': 'cpu',
+        'name': 'cpucaps',
         'stat':[
             'usage',
             'value'
@@ -67,13 +67,15 @@ var child_process = require('child_process');
 //our plugin main function
 module.exports = function( axon ) {
 
-    var emit_kstat = function(type, data) {
+    var emit_kstat = function(type, data, callback) {
         for (var id in type) {
             axon.emit( 'data',  data['nervous_type'] + '.' + data['nervous_name'] + '.' + type[id], data[type[id]] );
         }
+        callback(type, data);
     };
 
-    var on_kstat_complete = function(err, stdout, stderr, type_name) {
+    var on_kstat_complete = function(err, stdout, stderr, type_name, callback) {
+        var callback = callback || function() {};
         var data = [];
         var field = [];
         var type = kstat[type_name];
@@ -99,8 +101,12 @@ module.exports = function( axon ) {
             var alias = zone[ALIAS_ID];
             alias = alias.replace(/\./, '_');
             data['nervous_type'] = alias;
-            emit_kstat(type['stat'], data);
+            emit_kstat(type['stat'], data, callback);
         }
+    };
+
+    var cpucaps_callback = function(type, data) {
+        axon.emit( 'data',  data['nervous_type'] + '.' + 'cpu' + '.' + 'usage', data['usage']/data['value']);
     };
 
     var emit_data = function(data) {
@@ -186,10 +192,9 @@ module.exports = function( axon ) {
             }
             vm_list[field[ZONE_ID]] = field;
             vm_list[field[UUID_ID]] = field;
-            console.log(field);
             child_process.exec( 'kstat -p caps::cpucaps_zone_' + field[ZONE_ID],
                 function(err, stdout, stderr){
-                    on_kstat_complete(err, stdout, stderr, 'cpu');
+                    on_kstat_complete(err, stdout, stderr, 'cpucaps', cpucaps_callback);
                 });
             child_process.exec( 'kstat -m link -n z' + field[ZONE_ID]  + '_net* -p',
                 function(err, stdout, stderr){
